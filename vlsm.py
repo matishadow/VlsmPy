@@ -2,9 +2,10 @@ import getopt
 import os
 import sys
 
-
 DOT_DELIMITER = '.'
 COMMA_DELIMITER = ','
+IP_V4_LENGTH = 32
+
 
 def cls():
     os.system("cls" if os.name == "nt" else "clear")
@@ -70,17 +71,28 @@ def convert_slash_mask_to_address(mask):
 
     mask = int(mask[1:])
 
-    for i in range(32 // 8):
+    for i in range(IP_V4_LENGTH // 8):
         if mask >= 8:
             address_mask.append(255)
             mask -= 8
         elif mask > 0:
-            address_mask.append(int("1" * mask + "0" * (8 - mask),2))
+            address_mask.append(int("1" * mask + "0" * (8 - mask), 2))
             mask = 0
         else:
             address_mask.append(0)
 
     return address_mask
+
+
+def find_optimal_mask(host_demand):
+    host_capacity = 0
+    power = 1
+
+    while host_capacity < host_demand:
+        power += 1
+        host_capacity = (2**power) - 2
+
+    return "/" + str(IP_V4_LENGTH - power) #convert_slash_mask_to_address("/" + str(IP_V4_LENGTH - power))
 
 
 def main():
