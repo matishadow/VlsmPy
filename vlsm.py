@@ -1,9 +1,13 @@
+import getopt
 import os
 import sys
 
 
+DOT_DELIMITER = '.'
+COMMA_DELIMITER = ','
+
 def cls():
-    os.system('cls' if os.name == 'nt' else 'clear')
+    os.system("cls" if os.name == "nt" else "clear")
 
 
 def print_help():
@@ -19,9 +23,75 @@ def print_help():
     sys.exit(0)
 
 
-def main():
+def print_error(error):
+    cls()
+    print(error)
+    print("If you need help type: vlsm.py --help")
+    sys.exit(0)
+
+
+def parse_input():
     if not len(sys.argv[1:]):
         print_help()
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:],
+                                   "h:n:m:h",
+                                   ["help", "network", "mask", "hosts"])
+    except getopt.GetoptError as error:
+        print_error(error)
+
+    for o, a in opts:
+        if o == "--help":
+            print_help()
+        elif o in ("-n", "--network"):
+            network = a
+        elif o in ("-m", "--mask"):
+            mask = a
+        elif o in ("-h", "--hosts"):
+            hosts = a
+
+    try:
+        network, mask, hosts
+    except NameError as error:
+        print_error(error)
+
+    return network, mask, hosts
+
+
+def convert_input_to_array(data, delimiter):
+    data = data.split(delimiter)
+    data = list(map(int, data))
+    return data
+
+
+def convert_slash_mask_to_address(mask):
+    address_mask = []
+
+    mask = int(mask[1:])
+
+    for i in range(32 // 8):
+        if mask >= 8:
+            address_mask.append(255)
+            mask -= 8
+        elif mask > 0:
+            address_mask.append(int("1" * mask + "0" * (8 - mask),2))
+            mask = 0
+        else:
+            address_mask.append(0)
+
+    return address_mask
+
+
+def main():
+    network, mask, hosts = parse_input()
+
+    network = convert_input_to_array(network, DOT_DELIMITER)
+    hosts = convert_input_to_array(hosts, COMMA_DELIMITER)
+    if mask[0] == '/' or mask[0] == '\\':
+        mask = convert_slash_mask_to_address(mask)
+    else:
+        mask = convert_input_to_array(mask, DOT_DELIMITER)
 
 
 main()
