@@ -92,7 +92,7 @@ def find_optimal_mask(host_demand):
         power += 1
         host_capacity = (2**power) - 2
 
-    return "/" + str(IP_V4_LENGTH - power) #convert_slash_mask_to_address("/" + str(IP_V4_LENGTH - power))
+    return convert_slash_mask_to_address("/" + str(IP_V4_LENGTH - power))
 
 
 def main():
