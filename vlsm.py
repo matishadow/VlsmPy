@@ -97,23 +97,42 @@ def find_optimal_mask(host_demand):
     return convert_slash_mask_to_address("/" + str(IP_V4_LENGTH - power))
 
 
-def calculate_next_network(current_network, current_mask):
-    network_copy = list(current_network)
-    mask_copy = list(current_mask)
+def add_full_range(network, mask):
+    network_copy = list(network)
+    mask_copy = list(mask)
 
     for i in range(NUMBER_OF_OCTS):
         mask_copy[i] ^= 255
         network_copy[i] += mask_copy[i]
-    network_copy[NUMBER_OF_OCTS - 1] += 1
+    return network_copy, mask_copy
 
+
+def check_overflow(network):
     for i in range(NUMBER_OF_OCTS - 1, -1, -1):
-        if network_copy[i] > BITS_IN_OCT:
+        if network[i] > BITS_IN_OCT:
             if i == 0:
                 raise Exception("Operation exceeded IPv4 range")
-            network_copy[i] -= (BITS_IN_OCT + 1)
-            network_copy[i - 1] += 1
+            network[i] -= (BITS_IN_OCT + 1)
+            network[i - 1] += 1
 
-    return network_copy
+
+def add_one_to_network(network):
+    network[NUMBER_OF_OCTS - 1] += 1
+
+
+def subtract_one_from_network(network):
+    for i in range(NUMBER_OF_OCTS - 1, -1, -1):
+        if network[i] != 0:
+            network[i] -= 1
+            break
+
+
+def calculate_next_network(current_network, current_mask):
+    network, mask = add_full_range(current_network, current_mask)
+    add_one_to_network(network)
+    check_overflow(network)
+
+    return network
 
 
 def calculate_networks(network, mask, hosts):
@@ -129,6 +148,44 @@ def calculate_networks(network, mask, hosts):
     return result
 
 
+def calculate_available_addresses(networks):
+    networks_count = len(networks)
+    available_addresses = []
+
+    for i in range(networks_count):
+        network_copy = list(networks[i][0])
+        mask_copy = list(networks[i][1])
+
+        broadcast_address = add_full_range(network_copy, mask_copy)[0]
+        add_one_to_network(network_copy)
+        check_overflow(network_copy)
+        first_address = network_copy
+        last_address = list(broadcast_address)
+        subtract_one_from_network(last_address)
+
+        available_addresses.append((first_address, last_address, broadcast_address))
+
+    return available_addresses
+
+
+def convert_ip_to_str(address):
+    return DOT_DELIMITER.join(str(x) for x in address)
+
+
+def print_result(networks, demanded_hosts, available_addresses):
+    cls()
+
+    networks_count = len(networks)
+    for i in range(networks_count):
+        print("Network #{0} (demanded hosts:{1}):".format(i + 1, demanded_hosts[i]))
+        print("Network address: {0}".format(convert_ip_to_str(networks[i][0])))
+        print("Network mask: {0}".format(convert_ip_to_str(networks[i][1])))
+        print("Broadcast address: {0}".format(convert_ip_to_str(available_addresses[i][2])))
+        print("Available addresses for hosts: {0} - {1}".format(convert_ip_to_str(available_addresses[i][0]),
+                                                                convert_ip_to_str(available_addresses[i][1])))
+        print("")
+
+
 def main():
     network, mask, hosts = parse_input()
 
@@ -141,6 +198,7 @@ def main():
 
     hosts.sort(reverse=True)
     calculated_networks = calculate_networks(network, mask, hosts)
-    print(calculated_networks)
+    available_addresses = calculate_available_addresses(calculated_networks)
+    print_result(calculated_networks, hosts, available_addresses)
 
 main()
