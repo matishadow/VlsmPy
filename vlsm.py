@@ -105,5 +105,6 @@ def main():
     else:
         mask = convert_input_to_array(mask, DOT_DELIMITER)
 
+    hosts = hosts.sort(reverse=True)
 
 main()
