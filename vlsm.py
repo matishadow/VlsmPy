@@ -5,6 +5,8 @@ import sys
 DOT_DELIMITER = '.'
 COMMA_DELIMITER = ','
 IP_V4_LENGTH = 32
+NUMBER_OF_OCTS = IP_V4_LENGTH // 8
+BITS_IN_OCT = 255
 
 
 def cls():
@@ -71,7 +73,7 @@ def convert_slash_mask_to_address(mask):
 
     mask = int(mask[1:])
 
-    for i in range(IP_V4_LENGTH // 8):
+    for i in range(NUMBER_OF_OCTS):
         if mask >= 8:
             address_mask.append(255)
             mask -= 8
@@ -95,6 +97,38 @@ def find_optimal_mask(host_demand):
     return convert_slash_mask_to_address("/" + str(IP_V4_LENGTH - power))
 
 
+def calculate_next_network(current_network, current_mask):
+    network_copy = list(current_network)
+    mask_copy = list(current_mask)
+
+    for i in range(NUMBER_OF_OCTS):
+        mask_copy[i] ^= 255
+        network_copy[i] += mask_copy[i]
+    network_copy[NUMBER_OF_OCTS - 1] += 1
+
+    for i in range(NUMBER_OF_OCTS - 1, -1, -1):
+        if network_copy[i] > BITS_IN_OCT:
+            if i == 0:
+                raise Exception("Operation exceeded IPv4 range")
+            network_copy[i] -= (BITS_IN_OCT + 1)
+            network_copy[i - 1] += 1
+
+    return network_copy
+
+
+def calculate_networks(network, mask, hosts):
+    result = []
+
+    current_network = list(network)
+    for host_number in hosts:
+        current_mask = find_optimal_mask(host_number)
+        result.append((current_network, current_mask))
+
+        current_network = calculate_next_network(current_network, current_mask)
+
+    return result
+
+
 def main():
     network, mask, hosts = parse_input()
 
@@ -105,6 +139,8 @@ def main():
     else:
         mask = convert_input_to_array(mask, DOT_DELIMITER)
 
-    hosts = hosts.sort(reverse=True)
+    hosts.sort(reverse=True)
+    calculated_networks = calculate_networks(network, mask, hosts)
+    print(calculated_networks)
 
 main()
