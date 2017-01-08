@@ -92,7 +92,7 @@ def find_optimal_mask(host_demand):
 
     while host_capacity < host_demand:
         power += 1
-        host_capacity = (2**power) - 2
+        host_capacity = (2 ** power) - 2
 
     return convert_slash_mask_to_address("/" + str(IP_V4_LENGTH - power))
 
@@ -111,6 +111,7 @@ def check_overflow(network):
     for i in range(NUMBER_OF_OCTS - 1, -1, -1):
         if network[i] > BITS_IN_OCT:
             if i == 0:
+                cls()
                 raise Exception("Operation exceeded IPv4 range")
             network[i] -= (BITS_IN_OCT + 1)
             network[i - 1] += 1
@@ -135,7 +136,16 @@ def calculate_next_network(current_network, current_mask):
     return network
 
 
+def is_network_valid(network_to_validate, whole_network, mask):
+    for i in range(NUMBER_OF_OCTS):
+        if network_to_validate[i] & mask[i] != whole_network[i]:
+            return False
+
+    return True
+
+
 def calculate_networks(network, mask, hosts):
+    whole_network = list(network)
     result = []
 
     current_network = list(network)
@@ -144,6 +154,9 @@ def calculate_networks(network, mask, hosts):
         result.append((current_network, current_mask))
 
         current_network = calculate_next_network(current_network, current_mask)
+        if not is_network_valid(current_network, whole_network, mask):
+            cls()
+            raise Exception("Number of hosts exceeded capacity of given network")
 
     return result
 
@@ -200,5 +213,6 @@ def main():
     calculated_networks = calculate_networks(network, mask, hosts)
     available_addresses = calculate_available_addresses(calculated_networks)
     print_result(calculated_networks, hosts, available_addresses)
+
 
 main()
