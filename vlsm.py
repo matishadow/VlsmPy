@@ -14,7 +14,6 @@ def cls():
 
 
 def print_help():
-    cls()
     print("VLSM subnetting tool for IPv4")
     print('')
     print("usage: vlsm.py -n network_address -m mask -h hosts")
@@ -27,7 +26,6 @@ def print_help():
 
 
 def print_error(error):
-    cls()
     print(error)
     print("If you need help type: vlsm.py --help")
     sys.exit(0)
@@ -111,7 +109,6 @@ def check_overflow(network):
     for i in range(NUMBER_OF_OCTS - 1, -1, -1):
         if network[i] > BITS_IN_OCT:
             if i == 0:
-                cls()
                 raise Exception("Operation exceeded IPv4 range")
             network[i] -= (BITS_IN_OCT + 1)
             network[i - 1] += 1
@@ -155,7 +152,6 @@ def calculate_networks(network, mask, hosts):
 
         current_network = calculate_next_network(current_network, current_mask)
         if not is_network_valid(current_network, whole_network, mask):
-            cls()
             raise Exception("Number of hosts exceeded capacity of given network")
 
     return result
@@ -186,8 +182,6 @@ def convert_ip_to_str(address):
 
 
 def print_result(networks, demanded_hosts, available_addresses):
-    cls()
-
     networks_count = len(networks)
     for i in range(networks_count):
         print("Network #{0} (demanded hosts:{1}):".format(i + 1, demanded_hosts[i]))
@@ -199,7 +193,25 @@ def print_result(networks, demanded_hosts, available_addresses):
         print("")
 
 
+def correct_network(address, mask):
+    for i in range(NUMBER_OF_OCTS):
+        address[i] = address[i] & mask[i]
+
+    return address
+
+
+def check_network(address, mask):
+    if not is_network_valid(address, address, mask):
+        print("[!] Mask does not cover the whole network [!]")
+        print("[!] Attempting to correct the mask [!]")
+        print("\n")
+        address = correct_network(address, mask)
+
+    return address
+
+
 def main():
+    cls()
     network, mask, hosts = parse_input()
 
     network = convert_input_to_array(network, DOT_DELIMITER)
@@ -208,6 +220,8 @@ def main():
         mask = convert_slash_mask_to_address(mask)
     else:
         mask = convert_input_to_array(mask, DOT_DELIMITER)
+
+    network = check_network(network, mask)
 
     hosts.sort(reverse=True)
     calculated_networks = calculate_networks(network, mask, hosts)
