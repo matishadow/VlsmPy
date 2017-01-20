@@ -4,9 +4,12 @@ import sys
 
 DOT_DELIMITER = '.'
 COMMA_DELIMITER = ','
+INFO_TAG = "[*]"
 IP_V4_LENGTH = 32
 NUMBER_OF_OCTS = IP_V4_LENGTH // 8
 BITS_IN_OCT = 255
+
+verbose = False
 
 
 def cls():
@@ -16,7 +19,9 @@ def cls():
 def print_help():
     print("VLSM subnetting tool for IPv4")
     print('')
-    print("usage: vlsm.py -n network_address -m mask -h hosts")
+    print("usage:\nvlsm.py -n network_address -m mask -h hosts\n")
+    print("options:")
+    print("-v\t Have vlsm.py give more verbose output.")
     print("\n")
     print("Examples:")
     print("vlsm.py -n 192.168.1.0 -m 255.255.255.0 -h 100,50,25,5")
@@ -31,14 +36,19 @@ def print_error(error):
     sys.exit(0)
 
 
+def print_info(message):
+    print("{0} {1} {2}".format(INFO_TAG, message, INFO_TAG))
+
+
 def parse_input():
+    global verbose
     if not len(sys.argv[1:]):
         print_help()
 
     try:
         opts, args = getopt.getopt(sys.argv[1:],
-                                   "h:n:m:h",
-                                   ["help", "network", "mask", "hosts"])
+                                   "h:n:m:h:v",
+                                   ["help", "network", "mask", "hosts", "verbose"])
     except getopt.GetoptError as error:
         print_error(error)
 
@@ -51,6 +61,8 @@ def parse_input():
             mask = a
         elif o in ("-h", "--hosts"):
             hosts = a
+        elif o in ("-v", "--verbose"):
+            verbose = True
 
     try:
         network, mask, hosts
@@ -184,12 +196,33 @@ def convert_ip_to_str(address):
 def print_result(networks, demanded_hosts, available_addresses):
     networks_count = len(networks)
     for i in range(networks_count):
+        network = networks[i][0]
+        mask = networks[i][1]
+        broadcast = available_addresses[i][2]
+        first_address = available_addresses[i][0]
+        last_address = available_addresses[i][1]
+
         print("Network #{0} (demanded hosts:{1}):".format(i + 1, demanded_hosts[i]))
-        print("Network address: {0}".format(convert_ip_to_str(networks[i][0])))
-        print("Network mask: {0}".format(convert_ip_to_str(networks[i][1])))
-        print("Broadcast address: {0}".format(convert_ip_to_str(available_addresses[i][2])))
-        print("Available addresses for hosts: {0} - {1}".format(convert_ip_to_str(available_addresses[i][0]),
-                                                                convert_ip_to_str(available_addresses[i][1])))
+        print("Network address: {0}".format(convert_ip_to_str(network)))
+        if verbose:
+            print_ip_binary(network)
+            print("")
+        print("Network mask: {0}".format(convert_ip_to_str(mask)))
+        if verbose:
+            print_ip_binary(mask)
+            print("")
+        print("Broadcast address: {0}".format(convert_ip_to_str(broadcast)))
+        if verbose:
+            print_ip_binary(broadcast)
+            print("")
+        print("Available addresses for hosts: {0} - {1}".format(convert_ip_to_str(first_address),
+                                                                convert_ip_to_str(last_address)))
+        if verbose:
+            print("First address:")
+            print_ip_binary(first_address)
+            print("Last address:")
+            print_ip_binary(last_address)
+            print("")
         print("")
 
 
@@ -201,13 +234,55 @@ def correct_network(address, mask):
 
 
 def check_network(address, mask):
-    if not is_network_valid(address, address, mask):
+    if verbose:
+        print_info("Checking network")
+
+    network_is_valid = is_network_valid(address, address, mask)
+    if not network_is_valid:
         print("[!] Mask does not cover the whole network [!]")
-        print("[!] Attempting to correct the mask [!]")
+        print("[!] Attempting to correct the mask by ANDing Network and MASK [!]")
         print("\n")
         address = correct_network(address, mask)
 
+    if verbose and network_is_valid:
+        print_info("Network is valid")
+        print("\n")
     return address
+
+
+def convert_oct_to_bin(oct):
+    oct = bin(oct)[2:]
+    l = len(oct)
+    if l < 8:
+        oct = "0" * (8 - l) + oct
+    return oct
+
+
+def print_ip_decimal(ip):
+    s = convert_ip_to_str(ip)
+    print(s)
+
+
+def print_ip_binary(ip):
+    s = DOT_DELIMITER.join(convert_oct_to_bin(i) for i in ip)
+    print(s)
+
+
+def print_ip(ip, is_decimal_form, is_binary_form):
+    if is_decimal_form:
+        print_ip_decimal(ip)
+    if is_binary_form:
+        print_ip_binary(ip)
+
+
+def print_arguments(network, mask):
+    print_info("Given network:")
+    print_ip(network, True, True)
+    print("")
+
+    print_info("Given mask:")
+    print_ip(mask, True, True)
+    print("\n")
 
 
 def main():
@@ -220,10 +295,16 @@ def main():
         mask = convert_slash_mask_to_address(mask)
     else:
         mask = convert_input_to_array(mask, DOT_DELIMITER)
+    if verbose:
+        print_arguments(network, mask)
 
     network = check_network(network, mask)
 
     hosts.sort(reverse=True)
+
+    if verbose:
+        print_info("Calculating networks")
+        print("")
     calculated_networks = calculate_networks(network, mask, hosts)
     available_addresses = calculate_available_addresses(calculated_networks)
     print_result(calculated_networks, hosts, available_addresses)
